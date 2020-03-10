@@ -1,11 +1,85 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import debug
+# External libraries
 import os
+import matplotlib.pyplot as plt
 
-def visualize_and_save_figure(figure, path, file_name, file_type = 'pdf', dpi = 300, show = False, close = True):
-    # Create dsgtination path as needed
-    os.makedirs(os.path.normpath(path), exist_ok=True)
+# Own libraries
+import debug
+
+def read_options(args):
+    """Reads the command line options for visualization
+
+    Args:
+        args (object): command line arguments
+
+    Returns:
+        options object for visualization
+    """
+    options = {
+        'path': args.path,
+        'file_type': args.file_type,
+        'figure_path': args.figure_path,
+        'plot': args.plot,
+        'dpi': args.dpi,
+        'show': args.show,
+        'figsize': args.figsize,
+        'fontsize': args.fontsize,
+        'colormap': args.colormap,
+        'usetex': args.usetex,
+        'font_family': args.tex_font_family,
+        'text_size': args.tex_text_size
+    }
+
+    return options
+
+def do_plot(options):
+    """Tells whether it should be plotted during the run.
+
+    Args:
+        options (dict): The dictionary containing the given visualization options
+
+    Returns:
+        plot (bool): Plot if True, otherwise do not plot
+    """
+    plot = options.get('plot', False)
+
+    return plot
+
+def get_option(options, option_key, default = None):
+    """Gives an option value for a key of the visualization-options dictionary.
+        A default value can be specified for the case that the key is not present in the dicitonary.
+    """
+    option = options.get(option_key, default)
+
+    return option
+
+def get_visualize_options(options):
+    """Returns the option that were specified for the visualize function from the
+        visualization options dictionary. Gives a default value for not given values.
+    """
+    path = os.path.normpath(options.get('figure_path', '../plots'))
+    file_type = options.get('file_type', 'pdf')
+    dpi = options.get('dpi', 300)
+    show = options.get('show', False)
+    close = options.get('close', True)
+
+    return path, file_type, dpi, show, close
+
+def visualize(figure, file_name, options):
+    """Visualizes a figure. I. e. saves it as file and shows it if specified.
+        Normally, closes the figure.
+
+    Args:
+        figure (object): A matplotlib figure object to be visualized
+        file_name (str): The name of the generated file
+        options (dict): The visualization options that have been specified
+    """
+    # Get options or fall back to default options
+    path, file_type, dpi, show, close = get_visualize_options(options)
+
+    # Create destination path as needed
+    os.makedirs(path, exist_ok=True)
+
+    debug.log('Saving figure to path: "' + str(os.path.abspath(path)) + '".')
 
     # Save figure to file
     figure.savefig(os.path.join(path, file_name + '.' + file_type), dpi=dpi, format=file_type)
@@ -17,40 +91,3 @@ def visualize_and_save_figure(figure, path, file_name, file_type = 'pdf', dpi = 
     # Close figure if specified
     if close:
         plt.close(figure)
-
-def visualize_pca_2d(x_pca_2d, db, names, rank, args, visualize_noise = False):
-    # Extract the data to be visualized
-    labels = db.labels_
-    unique_labels = set(labels)
-    n_cluster = len(unique_labels) - (1 if -1 in labels else 0)
-    n_noise = list(labels).count(-1)
-
-    db_figure = plt.figure()
-
-    for k in unique_labels:
-        if (k != -1):
-            class_k_members_mask = (labels == k)
-            points_k_class = x_pca_2d[class_k_members_mask]
-            plt.plot(points_k_class[:,0], points_k_class[:,1], 'o')
-            print("In class k = " + str(k) + "\n" + str(names[class_k_members_mask]) )
-        #else:
-        #    break
-
-    # Set plot title
-    plt.title('2D PCA Scatter Plot of clusters obtained by DBSCAN in ' + str(rank) + " dimensions. " + '\n' + " Parameters. eps = " + str(args.epsilon) + " NumPointsMin = " + str(args.min_samples))
-
-    visualize_and_save_figure(db_figure, args.figure_path, 'db_figure', args.file_type, args.dpi, args.show)
-
-    noise_mask = (labels ==-1)
-    noisy_points = x_pca_2d[noise_mask]
-
-    #Plot the noise
-    db_noise = plt.figure()
-    plt.plot(noisy_points[:,0], noisy_points[:,1], 'o')
-    plt.title("Outlier points obtained by DBSCAN in " + str(rank) + " dimensions. " + '\n' + " Parameters. eps = " + str(args.epsilon) + " NumPointsMin = " + str(args.min_samples) )
-    visualize_and_save_figure(db_noise, args.figure_path, 'db_noise', args.file_type, args.dpi, args.show)
-
-def visualize(args, names, rank, db, x_pca_2d):
-    visualize_pca_2d(x_pca_2d, db, names, rank, args, visualize_noise=False)
-
-    return
